@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Image Lab — Digital Image Processing</title>
+    <style>
+        :root{
+        --accent:#0b7285;
+        --accent-dark:#095e66;
+        --bg:#f3f7f9;
+        --panel:#ffffff;
+        --muted:#6b7280;
+        --card-border:#e6eef2;
+        }
+
+        *{box-sizing:border-box}
+        body{
+        margin:0;
+        font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
+        background:var(--bg);
+        color:#111827;
+        -webkit-font-smoothing:antialiased;
+        -moz-osx-font-smoothing:grayscale;
+        }
+
+        header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2%;
+        background: var(--panel);
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+        box-shadow: 0 6px 18px rgba(16,24,40,0.03);
+        flex-wrap: wrap; /* allows wrapping on small screens */
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.2rem; /* relative unit scales with zoom */
+            color: var(--accent-dark);
+            letter-spacing: 0.05rem;
+        }
+
+        .dev-card {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap; /* wrap if small screen */
+        }
+
+        .dev-photo {
+            width: 4.5rem; /* scales better than px */
+            height: 4.5rem;
+            object-fit: cover;
+            border-radius: 0.5rem;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 6px 14px rgba(12,20,30,0.04);
+            cursor: pointer;
+        }
+        .dev-meta{font-size:12px;color:var(--muted)}
+        .dev-meta strong{display:block;color:#0b7285;font-weight:600}
+
+        main{padding:20px;display:flex;flex-direction:column;gap:18px;max-width:1200px;margin:0 auto}
+
+        .panel{
+        background:var(--panel);
+        border-radius:12px;
+        padding:16px;
+        box-shadow:0 8px 24px rgba(12,20,30,0.03);
+        border:1px solid rgba(3,7,18,0.03);
+        }
+
+        .canvas-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+        .frame{
+        position:relative;
+        padding:14px;
+        border-radius:10px;
+        border:1px solid var(--card-border);
+        background:linear-gradient(180deg,#ffffff,#fbfdfe);
+        min-height:320px;
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+        align-items:stretch;
+        }
+        .frame-label{font-size:13px;color:var(--muted);font-weight:600}
+        .frame-canvas-wrap{
+        margin-top:6px;
+        flex:1;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:6px;
+        background:#f8fafb;
+        border-radius:8px;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);
+        }
+
+        /* Canvas (professional look) */
+        canvas.image-canvas{
+        background: #ffffff;
+        border-radius:8px;
+        border:1px solid rgba(10,20,30,0.04);
+        max-width:100%;
+        max-height:100%;
+        box-shadow:0 6px 18px rgba(8,12,20,0.04);
+        display:block;
+        }
+
+        /* top-right button group */
+        .top-buttons{
+        position:absolute;
+        top:12px;
+        right:12px;
+        display:flex;
+        gap:8px;
+        z-index:5;
+        }
+        .top-buttons .btn{
+        padding:8px 10px;
+        border-radius:8px;
+        border:none;
+        cursor:pointer;
+        font-size:13px;
+        }
+        .btn--primary{background:var(--accent);color:white}
+        .btn--muted{background:#6b7280;color:white}
+
+        /* operations row - single line, aligned */
+        .ops-row{display:flex;gap:10px;flex-wrap:nowrap;overflow:auto;padding:10px 6px}
+        .ops-row button{
+        padding:8px 12px;border-radius:8px;border:1px solid rgba(15,23,42,0.06);
+        background:#fff;color:#111;font-weight:600;cursor:pointer;white-space:nowrap;
+        box-shadow:0 2px 6px rgba(10,20,30,0.02);
+        }
+        .ops-row button.active{
+        background:var(--accent);color:white;border-color:var(--accent-dark);
+        box-shadow:0 8px 20px rgba(11,114,133,0.12);
+        }
+
+        /* parameters & histogram area */
+        .params-hist{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:stretch}
+        .params{
+        padding:12px;border-radius:8px;background:#ffffff;border:1px solid var(--card-border);
+        display:flex;flex-direction:column;gap:10px;
+        }
+        .param-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+        .param-row label{flex:1;color:var(--muted);font-size:13px}
+        .param-row input[type="number"]{
+        width:110px;padding:8px;border-radius:8px;border:1px solid #d1d5db;font-size:13px
+        }
+
+        .histogram{
+        padding:12px;border-radius:8px;background:#ffffff;border:1px solid var(--card-border);
+        display:flex;flex-direction:column;
+        }
+        .histogram-title{font-weight:600;color:var(--muted);margin-bottom:8px}
+        .histogram-canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        canvas#histogram-canvas{width:100%;height:100%;display:block;border-radius:6px}
+
+        footer{margin-top:4px;text-align:center;color:var(--muted);font-size:13px;padding:6px}
+        /* responsive */
+        @media(max-width:900px){
+        .canvas-grid{grid-template-columns:1fr;gap:12px}
+        .params-hist{grid-template-columns:1fr;gap:12px}
+        }
+    </style>
+    </head>
+    <body>
+    <header>
+        <h1>Digital Image Processing</h1>
+        <div class="dev-card">
+        <img id="dev-photo" class="dev-photo" src="kacchiraj.jpg" alt="Developer photo" title="">
+        <div class="dev-meta">
+            <strong>Mostafizur Rahman Akas</strong>
+            <div>ID: 0812220205101052</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+        </div>
+        <input type="file" id="devPhotoInput" accept="image/*" style="display:none">
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+        <div class="canvas-grid">
+            <!-- Input Frame -->
+            <div class="frame">
+            <div class="frame-label">Input</div>
+            <div class="top-buttons">
+                <button id="resetBtn" class="btn btn--muted">Reset</button>
+                <label for="fileInput" class="btn btn--primary" style="cursor:pointer">Upload</label>
+                <input id="fileInput" type="file" accept="image/*" style="display:none">
+            </div>
+            <div class="frame-canvas-wrap">
+                <canvas id="input-canvas" class="image-canvas" aria-label="Input image canvas"></canvas>
+            </div>
+            </div>
+
+            <!-- Output Frame -->
+            <div class="frame">
+            <div class="frame-label">Output</div>
+            <div class="top-buttons">
+                <button id="downloadBtn" class="btn btn--primary">Download</button>
+            </div>
+            <div class="frame-canvas-wrap">
+                <canvas id="output-canvas" class="image-canvas" aria-label="Output image canvas"></canvas>
+            </div>
+            </div>
+        </div>
+        </section>
+
+        <section class="panel">
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="ops-row" id="opsRow">
+            <button data-op="negative">Negative</button>
+            <button data-op="smoothing">Smoothing</button>
+            <button data-op="sharpen">Sharpen</button>
+            <button data-op="resize">Resize</button>
+            <button data-op="threshold">Threshold</button>
+            <button data-op="log">Log Transform</button>
+            <button data-op="gamma">Gamma Transform</button>
+            <button data-op="edge">Edge Detect</button>
+            </div>
+
+            <div class="params-hist">
+            <div class="params">
+                <div style="font-weight:700;color:#0b7285">Parameters</div>
+                <div class="param-row"><label for="kSize">Kernel size (odd):</label><input id="kSize" type="number" min="1" step="2" value="3"></div>
+                <div class="param-row"><label for="thVal">Threshold (0-255):</label><input id="thVal" type="number" min="0" max="255" step="1" value="128"></div>
+                <div class="param-row"><label for="gammaVal">Gamma (0.1 - 5):</label><input id="gammaVal" type="number" min="0.1" max="5" step="0.1" value="1.0"></div>
+                <div class="param-row"><label for="scaleVal">Resize %:</label><input id="scaleVal" type="number" min="10" max="500" step="1" value="100"></div>
+                <div style="margin-top:8px;color:var(--muted);font-size:13px">Tip: choose one operation at a time. Parameters reset when you press <strong>Reset</strong>.</div>
+            </div>
+
+            <div class="histogram">
+                <div class="histogram-title">Histogram</div>
+                <div class="histogram-canvas-wrap" id="histWrap">
+                <canvas id="histogram-canvas"></canvas>
+                </div>
+            </div>
+            </div>
+        </div>
+        </section>
+
+        <footer class="panel" style="text-align:center">Built client-side — no server required. All processing runs in your browser.</footer>
+    </main>
+
+    <script>
+        // --- Elements ---
+        const fileInput = document.getElementById('fileInput');
+        const inputCanvas = document.getElementById('input-canvas');
+        const outputCanvas = document.getElementById('output-canvas');
+        const inputCtx = inputCanvas.getContext('2d');
+        const outputCtx = outputCanvas.getContext('2d');
+        const opsRow = document.getElementById('opsRow');
+        const opsButtons = Array.from(opsRow.querySelectorAll('button'));
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const kSizeInput = document.getElementById('kSize');
+        const thInput = document.getElementById('thVal');
+        const gammaInput = document.getElementById('gammaVal');
+        const scaleInput = document.getElementById('scaleVal');
+        const histCanvas = document.getElementById('histogram-canvas');
+        const histWrap = document.getElementById('histWrap');
+        const devPhoto = document.getElementById('dev-photo');
+        const devPhotoInput = document.getElementById('devPhotoInput');
+
+        // --- State ---
+        let originalImage = null;
+        let originalDataURL = null;
+        let originalWidth = 0, originalHeight = 0;
+
+        // set a crisp rendering for histogram canvas to match its container
+        function resizeHistogramCanvas(){
+        const rect = histWrap.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        histCanvas.width = Math.max(200, Math.floor(rect.width * dpr));
+        histCanvas.height = Math.max(120, Math.floor(rect.height * dpr));
+        histCanvas.style.width = rect.width + 'px';
+        histCanvas.style.height = rect.height + 'px';
+        const hctx = histCanvas.getContext('2d');
+        hctx.setTransform(1,0,0,1,0,0); // reset any transform
+        // ensure drawing uses device pixels directly (we set canvas pixel size above)
+        }
+
+        // draw placeholder into a canvas
+        function drawPlaceholder(ctx, width, height, text){
+        ctx.clearRect(0,0,width,height);
+        ctx.fillStyle = '#f6fafb';
+        ctx.fillRect(0,0,width,height);
+        ctx.fillStyle = '#9aa6ae';
+        ctx.font = Math.max(12, Math.floor(Math.min(width,height)/12)) + 'px Inter, Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, width/2, height/2);
+        }
+
+        // initial placeholders
+        function initPlaceholders(){
+        inputCanvas.width = 800; inputCanvas.height = 600;
+        outputCanvas.width = 800; outputCanvas.height = 600;
+        drawPlaceholder(inputCtx, inputCanvas.width, inputCanvas.height, 'Upload an image (Input)');
+        drawPlaceholder(outputCtx, outputCanvas.width, outputCanvas.height, 'Output will appear here');
+        resizeHistogramCanvas();
+        const hctx = histCanvas.getContext('2d');
+        hctx.clearRect(0,0,histCanvas.width,histCanvas.height);
+        hctx.fillStyle = '#f3f7f9';
+        hctx.fillRect(0,0,histCanvas.width,histCanvas.height);
+        hctx.fillStyle = '#9aa6ae';
+        hctx.textAlign='center'; hctx.textBaseline='middle';
+        hctx.font = '14px Inter, Arial';
+        hctx.fillText('Histogram (empty)', histCanvas.width/2, histCanvas.height/2);
+        }
+
+        // load image file into canvases
+        fileInput.addEventListener('change', e=>{
+        const f = e.target.files[0];
+        if(!f) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const url = ev.target.result;
+            const img = new Image();
+            img.onload = () => {
+            originalImage = img;
+            originalDataURL = url;
+            originalWidth = img.width;
+            originalHeight = img.height;
+            // set canvas logical sizes to original resolution (processing done at full res)
+            inputCanvas.width = originalWidth;
+            inputCanvas.height = originalHeight;
+            outputCanvas.width = originalWidth;
+            outputCanvas.height = originalHeight;
+            // draw into both canvases
+            inputCtx.clearRect(0,0,inputCanvas.width,inputCanvas.height);
+            inputCtx.drawImage(img,0,0);
+            outputCtx.clearRect(0,0,outputCanvas.width,outputCanvas.height);
+            outputCtx.drawImage(img,0,0);
+            // fit histogram canvas
+            resizeHistogramCanvas();
+            drawHistogram();
+            // clear any active buttons
+            clearActiveOps();
+            // reset parameters to defaults
+            resetParamsToDefaults(false); // keep active op cleared but do not redraw
+            // make sure download enabled
+            downloadBtn.disabled = false;
+            };
+            img.onerror = ()=> alert('Unable to load that image file.');
+            img.src = url;
+        };
+        reader.readAsDataURL(f);
+        });
+
+        // developer photo replace handler
+        devPhoto.addEventListener('click', ()=> devPhotoInput.click());
+        devPhotoInput.addEventListener('change', e=>{
+        const f = e.target.files[0]; if(!f) return;
+        const r = new FileReader();
+        r.onload = ev => devPhoto.src = ev.target.result;
+        r.readAsDataURL(f);
+        });
+
+        // operations: make sure only one runs at a time (disable while running)
+        function setOpsEnabled(enabled){
+        opsButtons.forEach(b => { b.disabled = !enabled; });
+        }
+
+        function clearActiveOps(){
+        opsButtons.forEach(b => b.classList.remove('active'));
+        }
+
+        // main operation handler
+        opsButtons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if(!originalImage) { alert('Please upload an image first.'); return; }
+            // ensure single active
+            clearActiveOps();
+            btn.classList.add('active');
+            // disable others while processing
+            setOpsEnabled(false);
+            try{
+            await new Promise(resolve => setTimeout(resolve, 10)); // allow UI to update
+            const op = btn.dataset.op;
+            // draw fresh original before applying (consistent single-op behavior)
+            outputCanvas.width = originalWidth;
+            outputCanvas.height = originalHeight;
+            outputCtx.drawImage(originalImage,0,0);
+            // apply operation
+            if(op === 'negative') applyNegative();
+            else if(op === 'smoothing') applyConvolution(makeBoxKernel(Number(kSizeInput.value) || 3));
+            else if(op === 'sharpen') applyConvolution([0,-1,0,-1,5,-1,0,-1,0]);
+            else if(op === 'resize') applyResize();
+            else if(op === 'threshold') applyThreshold();
+            else if(op === 'log') applyLog();
+            else if(op === 'gamma') applyGamma();
+            else if(op === 'edge') applyConvolution([-1,-1,-1,-1,8,-1,-1,-1,-1]);
+            drawHistogram();
+            } catch(err){
+            console.error(err);
+            alert('An error occurred while processing the image.');
+            } finally {
+            // re-enable operations
+            setOpsEnabled(true);
+            }
+        });
+        });
+
+        // Reset button: fully reset everything to original uploaded state
+        resetBtn.addEventListener('click', ()=>{
+        resetAll();
+        });
+
+        function resetParamsToDefaults(drawAfter=true){
+        kSizeInput.value = 3;
+        thInput.value = 128;
+        gammaInput.value = 1.0;
+        scaleInput.value = 100;
+        clearActiveOps();
+        if(drawAfter && originalImage){
+            outputCanvas.width = originalWidth;
+            outputCanvas.height = originalHeight;
+            outputCtx.drawImage(originalImage,0,0);
+            inputCanvas.width = originalWidth;
+            inputCanvas.height = originalHeight;
+            inputCtx.drawImage(originalImage,0,0);
+            resizeHistogramCanvas();
+            drawHistogram();
+        }
+        }
+
+        function resetAll(){
+        if(!originalImage){
+            // nothing uploaded: re-initialize placeholders
+            initPlaceholders();
+            resetParamsToDefaults(false);
+            clearActiveOps();
+            downloadBtn.disabled = true;
+            return;
+        }
+        // restore everything to original
+        inputCanvas.width = originalWidth;
+        inputCanvas.height = originalHeight;
+        outputCanvas.width = originalWidth;
+        outputCanvas.height = originalHeight;
+        inputCtx.clearRect(0,0,inputCanvas.width,inputCanvas.height);
+        inputCtx.drawImage(originalImage,0,0);
+        outputCtx.clearRect(0,0,outputCanvas.width,outputCanvas.height);
+        outputCtx.drawImage(originalImage,0,0);
+        resetParamsToDefaults(false);
+        resizeHistogramCanvas();
+        drawHistogram();
+        clearActiveOps();
+        setOpsEnabled(true);
+        downloadBtn.disabled = false;
+        }
+
+        // DOWNLOAD
+        downloadBtn.addEventListener('click', () => {
+        if(!originalImage){ alert('No image to download.'); return; }
+        // download current output canvas as PNG
+        const link = document.createElement('a');
+        link.href = outputCanvas.toDataURL('image/png');
+        link.download = 'image_lab_result.png';
+        link.click();
+        });
+
+        // Image operations implementations
+        function getOutputImageData(){
+        try{
+            return outputCtx.getImageData(0,0,outputCanvas.width,outputCanvas.height);
+        }catch(e){
+            alert('Unable to read image data. Make sure an image is loaded.');
+            throw e;
+        }
+        }
+
+        function putOutputImageData(imgData){
+        // keep output canvas size
+        outputCtx.putImageData(imgData,0,0);
+        }
+
+        function applyNegative(){
+        const img = getOutputImageData();
+        const d = img.data;
+        for(let i=0;i<d.length;i+=4){
+            d[i] = 255 - d[i];
+            d[i+1] = 255 - d[i+1];
+            d[i+2] = 255 - d[i+2];
+        }
+        putOutputImageData(img);
+        }
+
+        function applyThreshold(){
+        const t = Number(thInput.value) || 128;
+        const img = getOutputImageData();
+        const d = img.data;
+        for(let i=0;i<d.length;i+=4){
+            const lum = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+            const v = lum >= t ? 255 : 0;
+            d[i]=d[i+1]=d[i+2]=v;
+        }
+        putOutputImageData(img);
+        }
+
+        function applyLog(){
+        const img = getOutputImageData();
+        const d = img.data;
+        const c = 255 / Math.log(1 + 255);
+        for(let i=0;i<d.length;i+=4){
+            d[i] = Math.min(255, Math.round(c * Math.log(1 + d[i])));
+            d[i+1] = Math.min(255, Math.round(c * Math.log(1 + d[i+1])));
+            d[i+2] = Math.min(255, Math.round(c * Math.log(1 + d[i+2])));
+        }
+        putOutputImageData(img);
+        }
+
+        function applyGamma(){
+        const g = parseFloat(gammaInput.value) || 1.0;
+        const inv = 1 / g;
+        // build LUT
+        const lut = new Uint8ClampedArray(256);
+        for(let i=0;i<256;i++) lut[i] = Math.min(255, Math.round(255 * Math.pow(i / 255, inv)));
+        const img = getOutputImageData();
+        const d = img.data;
+        for(let i=0;i<d.length;i+=4){
+            d[i] = lut[d[i]];
+            d[i+1] = lut[d[i+1]];
+            d[i+2] = lut[d[i+2]];
+        }
+        putOutputImageData(img);
+        }
+
+        function applyResize(){
+        const p = Number(scaleInput.value) || 100;
+        const scale = Math.max(1, p) / 100;
+        const newW = Math.max(1, Math.round(originalWidth * scale));
+        const newH = Math.max(1, Math.round(originalHeight * scale));
+        // draw original scaled into output canvas
+        outputCanvas.width = newW;
+        outputCanvas.height = newH;
+        outputCtx.clearRect(0,0,newW,newH);
+        outputCtx.drawImage(originalImage, 0, 0, newW, newH);
+        // keep input canvas original
+        drawHistogram();
+        }
+
+        // create a box kernel size k x k (normalized)
+        function makeBoxKernel(k){
+        k = Math.max(1, parseInt(k) || 3);
+        if(k % 2 === 0) k += 1; // ensure odd
+        const size = k * k;
+        const v = 1 / size;
+        return new Array(size).fill(v);
+        }
+
+        // convolution generic (square kernel)
+        function applyConvolution(kernel, kWidth){
+        // if kWidth not provided, assume sqrt length
+        if(!kWidth) kWidth = Math.round(Math.sqrt(kernel.length));
+        const img = getOutputImageData();
+        const src = img.data;
+        const w = img.width;
+        const h = img.height;
+        const dst = new ImageData(w, h);
+        const out = dst.data;
+        const half = Math.floor(kWidth / 2);
+
+        for(let y=0;y<h;y++){
+            for(let x=0;x<w;x++){
+            let r=0,g=0,b=0;
+            for(let ky=0; ky<kWidth; ky++){
+                for(let kx=0; kx<kWidth; kx++){
+                const sx = x + (kx - half);
+                const sy = y + (ky - half);
+                if(sx >= 0 && sx < w && sy >= 0 && sy < h){
+                    const sidx = (sy * w + sx) * 4;
+                    const kval = kernel[ky * kWidth + kx] || 0;
+                    r += src[sidx] * kval;
+                    g += src[sidx + 1] * kval;
+                    b += src[sidx + 2] * kval;
+                }
+                }
+            }
+            const idx = (y * w + x) * 4;
+            out[idx] = Math.min(255, Math.max(0, Math.round(r)));
+            out[idx+1] = Math.min(255, Math.max(0, Math.round(g)));
+            out[idx+2] = Math.min(255, Math.max(0, Math.round(b)));
+            out[idx+3] = 255;
+            }
+        }
+        putOutputImageData(dst);
+        }
+
+        // histogram drawing (fills the histogram canvas to its container)
+        function drawHistogram(){
+        resizeHistogramCanvas();
+        const hctx = histCanvas.getContext('2d');
+        try{
+            // read current displayed output image pixels (logical pixels)
+            const img = outputCtx.getImageData(0,0,outputCanvas.width, outputCanvas.height);
+            const data = img.data;
+            const bins = new Uint32Array(256);
+            for(let i=0;i<data.length;i+=4){
+            const lum = Math.round(0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]);
+            bins[lum]++;
+            }
+            const max = Math.max(...bins) || 1;
+            // draw background
+            hctx.clearRect(0,0,histCanvas.width,histCanvas.height);
+            hctx.fillStyle = '#fbfeff';
+            hctx.fillRect(0,0,histCanvas.width,histCanvas.height);
+            // bars
+            const barW = histCanvas.width / 256;
+            hctx.fillStyle = '#0b7285';
+            for(let i=0;i<256;i++){
+            const bh = Math.round((bins[i] / max) * histCanvas.height);
+            const x = Math.floor(i * barW);
+            hctx.fillRect(x, histCanvas.height - bh, Math.ceil(barW), bh);
+            }
+        }catch(e){
+            // no image or read error -> clear histogram
+            hctx.clearRect(0,0,histCanvas.width,histCanvas.height);
+            hctx.fillStyle = '#f3f7f9';
+            hctx.fillRect(0,0,histCanvas.width,histCanvas.height);
+            hctx.fillStyle = '#9aa6ae';
+            hctx.textAlign='center'; hctx.textBaseline='middle';
+            hctx.font = '14px Inter, Arial';
+            hctx.fillText('No data', histCanvas.width/2, histCanvas.height/2);
+        }
+        }
+
+        // ensure histogram canvas resizes with window
+        window.addEventListener('resize', ()=>{
+        // small delay so layout finished
+        setTimeout(()=>{ resizeHistogramCanvas(); drawHistogram(); }, 80);
+        });
+
+        // initialize placeholders & defaults
+        initPlaceholders();
+        resetParamsToDefaults(false);
+        downloadBtn.disabled = true;
+
+        // Make Reset behave like a full reset when user hasn't uploaded (clears placeholders)
+        // (already handled in resetAll)
+
+        // Make input and output canvases responsive visually while keeping logical pixel size
+        // CSS will scale them; when drawing we always use logical pixel canvas sizes.
+
+        // Optional: keyboard shortcuts - press Esc to clear active operation
+        document.addEventListener('keydown', (e)=>{
+        if(e.key === 'Escape') { clearActiveOps(); }
+        });
+
+        // small UX: clicking dev photo opens file chooser
+        // (already attached above)
+        // link upload label to fileInput - we used <label for="fileInput"> so fileInput is triggered
+
+        // ensure fileInput label behavior also checks file size and type optionally
+        fileInput.addEventListener('click', ()=> {
+        // reset value to allow re-uploading same file if needed
+        fileInput.value = '';
+        });
+
+    </script>
+</body>
+</html>
